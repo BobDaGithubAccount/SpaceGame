@@ -1,0 +1,114 @@
+plugins {
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+group = 'org.jephacake'
+version = '1.0.0'
+
+def osName = System.getProperty("os.name").toLowerCase()
+
+def lwjglVersion = "3.3.6"
+def jomlVersion = "1.10.5"
+
+repositories {
+    mavenCentral()
+}
+
+def nativePlatforms = ['natives-windows', 'natives-linux', 'natives-macos']
+
+dependencies {
+    implementation platform("org.lwjgl:lwjgl-bom:$lwjglVersion")
+
+    implementation "org.lwjgl:lwjgl"
+    implementation "org.lwjgl:lwjgl-opengl"
+    implementation "org.lwjgl:lwjgl-glfw"
+    implementation "org.lwjgl:lwjgl-openal"
+    implementation "org.lwjgl:lwjgl-stb"
+
+    // All runtime natives for all platforms
+    nativePlatforms.each { platform ->
+        runtimeOnly "org.lwjgl:lwjgl::$platform"
+        runtimeOnly "org.lwjgl:lwjgl-opengl::$platform"
+        runtimeOnly "org.lwjgl:lwjgl-glfw::$platform"
+        runtimeOnly "org.lwjgl:lwjgl-openal::$platform"
+        runtimeOnly "org.lwjgl:lwjgl-stb::$platform"
+    }
+
+    implementation "org.joml:joml:$jomlVersion"
+}
+
+application {
+    mainClass = 'org.jephacake.Main'
+}
+
+tasks.named('shadowJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+    archiveBaseName.set('SpaceGame')
+    archiveVersion.set('')
+    manifest {
+        attributes 'Main-Class': 'org.jephacake.Main'
+    }
+}
+
+tasks.named('run', JavaExec as Class<Task>) {
+    //macOS fix for GLFW
+    if (osName.contains("mac")) {
+        jvmArgs = ["-XstartOnFirstThread", "-Djava.awt.headless=true", "--enable-preview"]
+    }
+}
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs += '--enable-preview'
+}
+
+tasks.withType(JavaExec) {
+    jvmArgs += '--enable-preview'
+}
+
+
+//////////
+def osTargets = [
+        windows: "natives-windows",
+        linux  : "natives-linux",
+        macos  : "natives-macos"
+]
+
+tasks.register('exportAll', Copy) {
+    dependsOn tasks.named('shadowJar')
+    duplicatesStrategy = 'exclude'
+
+    from(tasks.named('shadowJar').map { it.archiveFile }) {
+        into("")
+    }
+    osTargets.each { osDir, nativeClassifier ->
+        from({
+            configurations.runtimeClasspath.filter { it.name.contains(nativeClassifier) }.collect { zipTree(it) }
+        }) {
+            into("natives/${osDir}")
+        }
+    }
+    into "$buildDir/export"
+
+    doLast {
+        def shadowJarArchive = tasks.named('shadowJar').get().archiveFile.get().asFile.name
+        // Windows batch script
+        file("$buildDir/export/run.bat").text = """@echo off
+setlocal
+set DIR=%~dp0
+java --enable-preview -Djava.library.path=%DIR%\\natives\\windows -jar %DIR%\\$shadowJarArchive
+"""
+        // Linux shell script
+        file("$buildDir/export/run.sh").text = """#!/bin/sh
+DIR="\$(cd "\$(dirname "\$0")" && pwd)"
+java --enable-preview -Djava.library.path="\$DIR/natives/linux" -jar "\$DIR/$shadowJarArchive"
+"""
+        file("$buildDir/export/run.sh").setExecutable(true)
+
+        // macOS shell script (extra JVM arg)
+        file("$buildDir/export/run-mac.sh").text = """#!/bin/sh
+DIR="\$(cd "\$(dirname "\$0")" && pwd)"
+java --enable-preview -XstartOnFirstThread -Djava.awt.headless=true -Djava.library.path="\$DIR/natives/macos" -jar "\$DIR/$shadowJarArchive"
+"""
+        file("$buildDir/export/run-mac.sh").setExecutable(true)
+    }
+}

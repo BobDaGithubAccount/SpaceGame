@@ -1,0 +1,13 @@
+    //TODO:
+    /*
+     - Get the chunk loading and unloading working without crashes or freezes.
+     - Get networking down with the server and client for chunks, block updates, chunk updates, loading and unloading, player polling etc...
+     - Ensure several "worlds" can exist on the server so we can get vehicles, planets and other voxel constructions rendered in parallel. This requires refactoring and generalisation
+     - Get player collision and entity/world collisions working (planets dont fall through each other)
+     - Then progress with more minecraft like essentials (e.g. debugging, wireframes and optimisations with more greedy mesh culling and merging, the ability to easily build and break blocks)
+     - TODO: FIX THE CULLING OF THE TOP FACE OF A HOMOGENEOUS CUBIC CHUNK - ORIENTATION IS WRONG HERE AND MAY CAUSE ISSUES IN NON SUPERFLAT INSTANCES
+     - Get the lighting engine working as well as with dynamic lights
+
+     - Once these are down, the actual implementation of the game can begin.
+     - Get authentication of accounts integrated and working from an early stage.
+     */
