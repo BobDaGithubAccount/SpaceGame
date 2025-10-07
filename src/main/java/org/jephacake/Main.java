@@ -9,6 +9,7 @@ import org.jephacake.world.World;
 import org.joml.Vector3f;
 
 import java.io.File;
+import java.util.Random;
 
 public class Main {
 
@@ -31,19 +32,15 @@ public class Main {
 
             BlockRegistry.init();
 
-//            World world = new World(atlas, new FlatWorldGenerator(8), new File(ResourceLoader.getJarDirectory() + "/saves/world.dat"), Options.renderDistance);
+            World world = new World(atlas, new FlatWorldGenerator(8), new File(ResourceLoader.getJarDirectory() + "/saves/world.dat"), Options.renderDistance);
 
-            World world = new World(atlas, new StressTester(), new File(ResourceLoader.getJarDirectory() + "/saves/world.dat"), Options.renderDistance);
+//            World world = new World(atlas, new StressTester(), new File(ResourceLoader.getJarDirectory() + "/saves/world.dat"), Options.renderDistance);
             /// /////////////////////
 
-            DebugOverlay debugOverlay = null;
-            if(Options.debugMode) debugOverlay = new DebugOverlay();
             long last = System.nanoTime();
-            long last1 = System.nanoTime();
             while (!wm.shouldClose()) {
                 long now = System.nanoTime();
                 float delta = (now - last) / 1_000_000_000f;
-                float delta1 = (now - last) / 1_000_000_000f;
                 last = now;
 
                 wm.pollEvents();
@@ -55,16 +52,9 @@ public class Main {
                 world.updateAndRender(renderer, cam.getPosition().x, cam.getPosition().y, cam.getPosition().z);
                 renderer.endFrame();
 
-                if (Options.debugMode) {
-                    String text = String.format("FPS: %f", (1.0f/delta1));
-                    debugOverlay.renderText(text, wm.getFramebufferWidth() - 220, 20,
-                            wm.getFramebufferWidth(), wm.getFramebufferHeight());
-                }
-
                 wm.swapBuffers();
             }
 
-            debugOverlay.close();
             world.close();
             renderer.close();
         }

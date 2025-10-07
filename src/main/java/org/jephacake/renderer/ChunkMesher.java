@@ -8,8 +8,10 @@ import org.jephacake.world.World;
 
 import java.util.ArrayList;
 
-//TODO HANDLE TRANSPARENCY (check neighbouring blocks for transparency, too)
-
+/**
+ * Chunk mesher producing mesh data in *local chunk coordinates*.
+ * i.e. vertex positions range with each chunk from 0..Chunk.SIZE (plus unit extents for block quads).
+ */
 public class ChunkMesher {
 
     public static class MeshData {
@@ -28,18 +30,21 @@ public class ChunkMesher {
         }
     }
 
-    // existing meshFromChunks can remain; add this smaller, chunk-level builder:
-    public static MeshData meshDataFromChunk(World world, Chunk c, TextureAtlas atlas, float worldOffsetX, float worldOffsetY, float worldOffsetZ) {
+    /**
+     * Build mesh data for a single chunk. OUTPUT IS IN LOCAL CHUNK COORDINATES.
+     * World is used only to query neighbor blocks (global coords) for occlusion checks.
+     */
+    public static MeshData meshDataFromChunk(World world, Chunk c, TextureAtlas atlas) {
         ArrayList<Float> pos = new ArrayList<>();
         ArrayList<Float> norm = new ArrayList<>();
         ArrayList<Float> tex = new ArrayList<>();
         ArrayList<Float> col = new ArrayList<>();
         ArrayList<Integer> idx = new ArrayList<>();
 
-        int baseCX = c.getCX() * Chunk.SIZE;
-        int baseCY = c.getCY() * Chunk.SIZE;
-        int baseCZ = c.getCZ() * Chunk.SIZE;
-        int[] vox = c.getVoxelData();
+        final int baseCX = c.getCX() * Chunk.SIZE;
+        final int baseCY = c.getCY() * Chunk.SIZE;
+        final int baseCZ = c.getCZ() * Chunk.SIZE;
+        final int[] vox = c.getVoxelData();
 
         for (int z = 0; z < Chunk.SIZE; z++) {
             for (int y = 0; y < Chunk.SIZE; y++) {
@@ -51,30 +56,24 @@ public class ChunkMesher {
 
                     float[] tint = block.getTintRGBA();
 
-                    addFaceIfEmptyGlobal(pos, norm, tex, col, idx,
+                    addFaceIfEmptyLocal(pos, norm, tex, col, idx,
                             baseCX, baseCY, baseCZ, x, y, z,
-                            world, BlockFace.NORTH, 0f, 0f, -1f, block, atlas, tint,
-                            worldOffsetX, worldOffsetY, worldOffsetZ);
-                    addFaceIfEmptyGlobal(pos, norm, tex, col, idx,
+                            world, BlockFace.NORTH, 0f, 0f, -1f, block, atlas, tint);
+                    addFaceIfEmptyLocal(pos, norm, tex, col, idx,
                             baseCX, baseCY, baseCZ, x, y, z,
-                            world, BlockFace.SOUTH, 0f, 0f, 1f, block, atlas, tint,
-                            worldOffsetX, worldOffsetY, worldOffsetZ);
-                    addFaceIfEmptyGlobal(pos, norm, tex, col, idx,
+                            world, BlockFace.SOUTH, 0f, 0f, 1f, block, atlas, tint);
+                    addFaceIfEmptyLocal(pos, norm, tex, col, idx,
                             baseCX, baseCY, baseCZ, x, y, z,
-                            world, BlockFace.BOTTOM, 0f, -1f, 0f, block, atlas, tint,
-                            worldOffsetX, worldOffsetY, worldOffsetZ);
-                    addFaceIfEmptyGlobal(pos, norm, tex, col, idx,
+                            world, BlockFace.BOTTOM, 0f, -1f, 0f, block, atlas, tint);
+                    addFaceIfEmptyLocal(pos, norm, tex, col, idx,
                             baseCX, baseCY, baseCZ, x, y, z,
-                            world, BlockFace.TOP, 0f, 1f, 0f, block, atlas, tint,
-                            worldOffsetX, worldOffsetY, worldOffsetZ);
-                    addFaceIfEmptyGlobal(pos, norm, tex, col, idx,
+                            world, BlockFace.TOP, 0f, 1f, 0f, block, atlas, tint);
+                    addFaceIfEmptyLocal(pos, norm, tex, col, idx,
                             baseCX, baseCY, baseCZ, x, y, z,
-                            world, BlockFace.WEST, -1f, 0f, 0f, block, atlas, tint,
-                            worldOffsetX, worldOffsetY, worldOffsetZ);
-                    addFaceIfEmptyGlobal(pos, norm, tex, col, idx,
+                            world, BlockFace.WEST, -1f, 0f, 0f, block, atlas, tint);
+                    addFaceIfEmptyLocal(pos, norm, tex, col, idx,
                             baseCX, baseCY, baseCZ, x, y, z,
-                            world, BlockFace.EAST, 1f, 0f, 0f, block, atlas, tint,
-                            worldOffsetX, worldOffsetY, worldOffsetZ);
+                            world, BlockFace.EAST, 1f, 0f, 0f, block, atlas, tint);
                 }
             }
         }
@@ -88,13 +87,15 @@ public class ChunkMesher {
         );
     }
 
-    // Small adaptation of your existing method but querying the World for neighbors
-    private static void addFaceIfEmptyGlobal(ArrayList<Float> pos, ArrayList<Float> norm, ArrayList<Float> tex, ArrayList<Float> col,
-                                             ArrayList<Integer> idx,
-                                             int baseCX, int baseCY, int baseCZ, int x, int y, int z,
-                                             World world,
-                                             BlockFace face, float nx, float ny, float nz, Block block, TextureAtlas atlas, float[] tint,
-                                             float worldOffsetX, float worldOffsetY, float worldOffsetZ) {
+    /**
+     * Add a face if there is no neighbour block (neighbor check uses world/global coords).
+     * Vertex coordinates produced here are local to the chunk (no world offsets).
+     */
+    private static void addFaceIfEmptyLocal(ArrayList<Float> pos, ArrayList<Float> norm, ArrayList<Float> tex, ArrayList<Float> col,
+                                            ArrayList<Integer> idx,
+                                            int baseCX, int baseCY, int baseCZ, int x, int y, int z,
+                                            World world,
+                                            BlockFace face, float nx, float ny, float nz, Block block, TextureAtlas atlas, float[] tint) {
         int dx = 0, dy = 0, dz = 0;
         switch (face) {
             case NORTH -> dz = -1;
@@ -109,7 +110,7 @@ public class ChunkMesher {
         int neighGlobalY = baseCY + y + dy;
         int neighGlobalZ = baseCZ + z + dz;
 
-        // Ask world for the neighbour block (treat missing chunk as empty -> face needed)
+        // If neighbor is empty (or chunk missing), emit the face
         if (world.getBlockGlobal(neighGlobalX, neighGlobalY, neighGlobalZ) == 0) {
             int tile = block.getTileForFace(face);
             float[] uv = atlas.getUVRect(tile);
@@ -117,46 +118,47 @@ public class ChunkMesher {
 
             int base = pos.size() / 3;
 
-            float wx = baseCX + x;
-            float wy = baseCY + y;
-            float wz = baseCZ + z;
+            // local coordinates (no baseCX/CY/CZ added)
+            float wx = x;
+            float wy = y;
+            float wz = z;
 
             switch (face) {
                 case NORTH -> {
-                    addVertex(pos, norm, tex, col, wx + 1f + worldOffsetX, wy + 0f + worldOffsetY, wz + 0f + worldOffsetZ, nx, ny, nz, u1, v0, tint);
-                    addVertex(pos, norm, tex, col, wx + 0f + worldOffsetX, wy + 0f + worldOffsetY, wz + 0f + worldOffsetZ, nx, ny, nz, u0, v0, tint);
-                    addVertex(pos, norm, tex, col, wx + 0f + worldOffsetX, wy + 1f + worldOffsetY, wz + 0f + worldOffsetZ, nx, ny, nz, u0, v1, tint);
-                    addVertex(pos, norm, tex, col, wx + 1f + worldOffsetX, wy + 1f + worldOffsetY, wz + 0f + worldOffsetZ, nx, ny, nz, u1, v1, tint);
+                    addVertex(pos, norm, tex, col, wx + 1f, wy + 0f, wz + 0f, nx, ny, nz, u1, v0, tint);
+                    addVertex(pos, norm, tex, col, wx + 0f, wy + 0f, wz + 0f, nx, ny, nz, u0, v0, tint);
+                    addVertex(pos, norm, tex, col, wx + 0f, wy + 1f, wz + 0f, nx, ny, nz, u0, v1, tint);
+                    addVertex(pos, norm, tex, col, wx + 1f, wy + 1f, wz + 0f, nx, ny, nz, u1, v1, tint);
                 }
                 case SOUTH -> {
-                    addVertex(pos, norm, tex, col, wx + 0f + worldOffsetX, wy + 0f + worldOffsetY, wz + 1f + worldOffsetZ, nx, ny, nz, u0, v0, tint);
-                    addVertex(pos, norm, tex, col, wx + 1f + worldOffsetX, wy + 0f + worldOffsetY, wz + 1f + worldOffsetZ, nx, ny, nz, u1, v0, tint);
-                    addVertex(pos, norm, tex, col, wx + 1f + worldOffsetX, wy + 1f + worldOffsetY, wz + 1f + worldOffsetZ, nx, ny, nz, u1, v1, tint);
-                    addVertex(pos, norm, tex, col, wx + 0f + worldOffsetX, wy + 1f + worldOffsetY, wz + 1f + worldOffsetZ, nx, ny, nz, u0, v1, tint);
+                    addVertex(pos, norm, tex, col, wx + 0f, wy + 0f, wz + 1f, nx, ny, nz, u0, v0, tint);
+                    addVertex(pos, norm, tex, col, wx + 1f, wy + 0f, wz + 1f, nx, ny, nz, u1, v0, tint);
+                    addVertex(pos, norm, tex, col, wx + 1f, wy + 1f, wz + 1f, nx, ny, nz, u1, v1, tint);
+                    addVertex(pos, norm, tex, col, wx + 0f, wy + 1f, wz + 1f, nx, ny, nz, u0, v1, tint);
                 }
                 case BOTTOM -> {
-                    addVertex(pos, norm, tex, col, wx + 0f + worldOffsetX, wy + 0f + worldOffsetY, wz + 0f + worldOffsetZ, nx, ny, nz, u0, v0, tint);
-                    addVertex(pos, norm, tex, col, wx + 1f + worldOffsetX, wy + 0f + worldOffsetY, wz + 0f + worldOffsetZ, nx, ny, nz, u1, v0, tint);
-                    addVertex(pos, norm, tex, col, wx + 1f + worldOffsetX, wy + 0f + worldOffsetY, wz + 1f + worldOffsetZ, nx, ny, nz, u1, v1, tint);
-                    addVertex(pos, norm, tex, col, wx + 0f + worldOffsetX, wy + 0f + worldOffsetY, wz + 1f + worldOffsetZ, nx, ny, nz, u0, v1, tint);
+                    addVertex(pos, norm, tex, col, wx + 0f, wy + 0f, wz + 0f, nx, ny, nz, u0, v0, tint);
+                    addVertex(pos, norm, tex, col, wx + 1f, wy + 0f, wz + 0f, nx, ny, nz, u1, v0, tint);
+                    addVertex(pos, norm, tex, col, wx + 1f, wy + 0f, wz + 1f, nx, ny, nz, u1, v1, tint);
+                    addVertex(pos, norm, tex, col, wx + 0f, wy + 0f, wz + 1f, nx, ny, nz, u0, v1, tint);
                 }
                 case TOP -> {
-                    addVertex(pos, norm, tex, col, wx + 0f + worldOffsetX, wy + 1f + worldOffsetY, wz + 1f + worldOffsetZ, nx, ny, nz, u0, v0, tint);
-                    addVertex(pos, norm, tex, col, wx + 1f + worldOffsetX, wy + 1f + worldOffsetY, wz + 1f + worldOffsetZ, nx, ny, nz, u1, v0, tint);
-                    addVertex(pos, norm, tex, col, wx + 1f + worldOffsetX, wy + 1f + worldOffsetY, wz + 0f + worldOffsetZ, nx, ny, nz, u1, v1, tint);
-                    addVertex(pos, norm, tex, col, wx + 0f + worldOffsetX, wy + 1f + worldOffsetY, wz + 0f + worldOffsetZ, nx, ny, nz, u0, v1, tint);
+                    addVertex(pos, norm, tex, col, wx + 0f, wy + 1f, wz + 1f, nx, ny, nz, u0, v0, tint);
+                    addVertex(pos, norm, tex, col, wx + 1f, wy + 1f, wz + 1f, nx, ny, nz, u1, v0, tint);
+                    addVertex(pos, norm, tex, col, wx + 1f, wy + 1f, wz + 0f, nx, ny, nz, u1, v1, tint);
+                    addVertex(pos, norm, tex, col, wx + 0f, wy + 1f, wz + 0f, nx, ny, nz, u0, v1, tint);
                 }
                 case WEST -> {
-                    addVertex(pos, norm, tex, col, wx + 0f + worldOffsetX, wy + 0f + worldOffsetY, wz + 0f + worldOffsetZ, nx, ny, nz, u1, v0, tint);
-                    addVertex(pos, norm, tex, col, wx + 0f + worldOffsetX, wy + 0f + worldOffsetY, wz + 1f + worldOffsetZ, nx, ny, nz, u0, v0, tint);
-                    addVertex(pos, norm, tex, col, wx + 0f + worldOffsetX, wy + 1f + worldOffsetY, wz + 1f + worldOffsetZ, nx, ny, nz, u0, v1, tint);
-                    addVertex(pos, norm, tex, col, wx + 0f + worldOffsetX, wy + 1f + worldOffsetY, wz + 0f + worldOffsetZ, nx, ny, nz, u1, v1, tint);
+                    addVertex(pos, norm, tex, col, wx + 0f, wy + 0f, wz + 0f, nx, ny, nz, u1, v0, tint);
+                    addVertex(pos, norm, tex, col, wx + 0f, wy + 0f, wz + 1f, nx, ny, nz, u0, v0, tint);
+                    addVertex(pos, norm, tex, col, wx + 0f, wy + 1f, wz + 1f, nx, ny, nz, u0, v1, tint);
+                    addVertex(pos, norm, tex, col, wx + 0f, wy + 1f, wz + 0f, nx, ny, nz, u1, v1, tint);
                 }
                 case EAST -> {
-                    addVertex(pos, norm, tex, col, wx + 1f + worldOffsetX, wy + 0f + worldOffsetY, wz + 1f + worldOffsetZ, nx, ny, nz, u1, v0, tint);
-                    addVertex(pos, norm, tex, col, wx + 1f + worldOffsetX, wy + 0f + worldOffsetY, wz + 0f + worldOffsetZ, nx, ny, nz, u0, v0, tint);
-                    addVertex(pos, norm, tex, col, wx + 1f + worldOffsetX, wy + 1f + worldOffsetY, wz + 0f + worldOffsetZ, nx, ny, nz, u0, v1, tint);
-                    addVertex(pos, norm, tex, col, wx + 1f + worldOffsetX, wy + 1f + worldOffsetY, wz + 1f + worldOffsetZ, nx, ny, nz, u1, v1, tint);
+                    addVertex(pos, norm, tex, col, wx + 1f, wy + 0f, wz + 1f, nx, ny, nz, u1, v0, tint);
+                    addVertex(pos, norm, tex, col, wx + 1f, wy + 0f, wz + 0f, nx, ny, nz, u0, v0, tint);
+                    addVertex(pos, norm, tex, col, wx + 1f, wy + 1f, wz + 0f, nx, ny, nz, u0, v1, tint);
+                    addVertex(pos, norm, tex, col, wx + 1f, wy + 1f, wz + 1f, nx, ny, nz, u1, v1, tint);
                 }
             }
 

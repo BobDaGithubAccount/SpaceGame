@@ -10,7 +10,7 @@ public class Chunk implements AutoCloseable {
     private final int[] voxels;
     private boolean dirty = false;
 
-    // new: per-chunk GL objects
+    // per-chunk GL objects (cached)
     private Mesh mesh = null;
     private Model model = null;
 
@@ -23,7 +23,7 @@ public class Chunk implements AutoCloseable {
         return x + y * SIZE + z * SIZE * SIZE;
     }
 
-    /// ////////////
+    // voxel manipulation
     public void setBlock(int x, int y, int z, int blockId) {
         voxels[index(x,y,z)] = blockId;
         dirty = true;
@@ -33,29 +33,36 @@ public class Chunk implements AutoCloseable {
         voxels[index(x,y,z)] = blockId;
         if (shouldUpdate) dirty = true;
     }
-    /// ////////////
 
     public int getBlock(int x, int y, int z) {
         return voxels[index(x,y,z)];
     }
 
-    public void markDirty() { dirty = true; }
+    public int[] getVoxelData() { return voxels; }
+
+    public int getCX() { return cx; }
+    public int getCY() { return cy; }
+    public int getCZ() { return cz; }
+
     public boolean isDirty() { return dirty; }
+    public void markDirty() { dirty = true; }
     public void clearDirty() { dirty = false; }
 
     /**
-     * Rebuild (synchronous) the mesh for this chunk using the provided world as BlockAccessor.
-     * If mesh/model do not exist, create them. If they exist, update them in-place.
+     * Rebuild (synchronous) the mesh for this chunk.
+     * NOTE: the mesher now produces vertex positions in LOCAL CHUNK COORDINATES (0..SIZE).
+     * The renderer will translate by (cx*SIZE, cy*SIZE, cz*SIZE) + world.position at draw-time.
      */
-    public void rebuildMesh(TextureAtlas atlas, World world, float worldOffsetX, float worldOffsetY, float worldOffsetZ) {
+    public synchronized void rebuildMesh(TextureAtlas atlas, World world) {
         if (!dirty) return;
 
-        ChunkMesher.MeshData data = ChunkMesher.meshDataFromChunk(world, this, atlas, worldOffsetX, worldOffsetY, worldOffsetZ);
+        // Use mesher that emits local coordinates
+        ChunkMesher.MeshData data = ChunkMesher.meshDataFromChunk(world, this, atlas);
 
-        // empty mesh -> free resources
-        if (data.indices.length == 0) {
+        // If the mesh is empty -> free existing resources (if any) and clear dirty flag
+        if (data.indices == null || data.indices.length == 0) {
             if (model != null) {
-                model.close();
+                try { model.close(); } catch (Exception e) { e.printStackTrace(); }
                 model = null;
                 mesh = null;
             }
@@ -64,34 +71,38 @@ public class Chunk implements AutoCloseable {
         }
 
         if (mesh == null) {
+            // Create new mesh and model
             mesh = new Mesh(data.positions, data.normals, data.texcoords, data.colors, data.indices);
-            model = new Model(mesh, atlas.getTexture()); // Model does NOT own atlas texture
+            model = new Model(mesh, atlas.getTexture()); // Model does NOT own atlas texture by default
         } else {
+            // Update existing GPU buffers with new data (orphan + reupload)
             mesh.update(data.positions, data.normals, data.texcoords, data.colors, data.indices);
         }
 
         dirty = false;
     }
 
-    public void render(Renderer renderer) {
-        if (model == null) return;
-        // vertices are already in world-space (ChunkMesher added offsets), so identity transform
-        renderer.renderModel(model, new Matrix4f().identity());
+    /**
+     * Return the cached Model (may be null). The renderer will call Renderer.renderModel(model, modelMatrix)
+     * with the appropriate translation matrix.
+     */
+    public synchronized Model getCachedModel() {
+        return model;
+    }
+
+    /**
+     * Return the mesh for diagnostics (may be null).
+     */
+    public synchronized Mesh getMesh() {
+        return mesh;
     }
 
     @Override
-    public void close() {
+    public synchronized void close() {
         if (model != null) {
-            model.close(); // this will close mesh too, but Model does NOT own atlas texture by default
+            try { model.close(); } catch (Exception e) { e.printStackTrace(); }
             model = null;
             mesh = null;
         }
     }
-
-    public int[] getVoxelData() { return voxels; }
-    public int getCX() { return cx; }
-    public int getCY() { return cy; }
-    public int getCZ() { return cz; }
-
-    public Mesh getMesh() { return mesh; }
 }

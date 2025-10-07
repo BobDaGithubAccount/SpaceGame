@@ -1,23 +1,27 @@
 package org.jephacake.renderer;
 
-import org.jephacake.configuration.Options;
 import org.jephacake.world.Chunk;
 import org.jephacake.world.World;
+import org.joml.Matrix4f;
 import org.joml.FrustumIntersection;
+
 import java.util.Collection;
 
 /**
  * Small helper that does frustum test + chunk rendering.
+ * Expects chunk mesh vertex positions to be in local chunk coordinates (0..Chunk.SIZE).
+ * Applies translation at render time: translate = (cx*SIZE, cy*SIZE, cz*SIZE) + world.position.
  */
 public class ChunkRenderer {
 
-    public Collection<Chunk> oldChunksForDebug;
+    private final Matrix4f modelMat = new Matrix4f();
 
     public void renderChunks(Collection<Chunk> chunks, Renderer renderer, World world) {
 
         FrustumIntersection fi = renderer.getFrustum();
 
-        int a = 0;
+        int totalVerts = 0;
+        int renderedChunks = 0;
 
         for (Chunk c : chunks) {
             float minX = c.getCX() * Chunk.SIZE + world.position.x;
@@ -29,13 +33,18 @@ public class ChunkRenderer {
 
             if (!fi.testAab(minX, minY, minZ, maxX, maxY, maxZ)) continue;
 
-            c.render(renderer);
+            Model model = c.getCachedModel();
+            if (model == null) continue;
 
-            if(c.getMesh() == null || c.getMesh().getVertexCount() == 0) continue;
-            a = a + c.getMesh().getVertexCount();
+            modelMat.identity();
+            modelMat.translate(minX, minY, minZ);
+
+            renderer.renderModel(model, modelMat);
+
+            if (c.getMesh() != null) totalVerts += c.getMesh().getVertexCount();
+            renderedChunks++;
         }
 
-        System.out.println("Rendered " + chunks.size() + " chunks with total " + a + " vertices.");
+//        System.out.println("Rendered " + renderedChunks + " chunks with total " + totalVerts + " vertices.");
     }
-
 }

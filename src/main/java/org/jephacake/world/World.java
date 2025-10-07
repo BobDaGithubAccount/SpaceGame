@@ -145,11 +145,13 @@ public class World implements AutoCloseable {
         // Rebuild only dirty chunks (synchronous)
         if (!dirtyChunks.isEmpty() || chunksChanged) {
             for (Chunk c : dirtyChunks) {
-                c.rebuildMesh(atlas, this, position.x, position.y, position.z);
+                c.rebuildMesh(atlas, this);
+                System.out.println("Built mesh for chunk " + c.getCX() + "," + c.getCY() + "," + c.getCZ());
             }
             dirtyChunks.clear();
         }
 
+        // Render - ChunkRenderer will apply per-chunk translation using chunk coords + world.position
         chunkRenderer.renderChunks(chunks.values(), renderer, this);
 
         // Now it’s safe to free chunk GL stuff that were pending unload
