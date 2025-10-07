@@ -5,7 +5,6 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 import static org.lwjgl.opengl.GL11.*;
-import static org.lwjgl.opengl.GL20.GL_SHADING_LANGUAGE_VERSION;
 
 /**
  * Top-level rendering facade. Holds shader, projection & view matrices and exposes simple render API.

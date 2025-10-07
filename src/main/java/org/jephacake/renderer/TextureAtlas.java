@@ -130,7 +130,7 @@ public final class TextureAtlas implements AutoCloseable {
         return new TextureAtlas(atlasW, atlasH, tileW, tileH, paddingPixels, names, atlasPixels);
     }
 
-    /**
+    /*
      * Upload the GPU texture. Call only after the GL context/capabilities are current.
      */
     /**
