@@ -11,4 +11,5 @@ public class Options {
 //    public static final int TEXTURE_ATLAS_PADDING = 0;
     public static int renderDistance = 8;
     public static final boolean debugMode = true; //NOTE THIS IS BROKEN AT THE MOMENT
+    public static final int MAX_MESH_UPLOADS_PER_FRAME = 10;
 }

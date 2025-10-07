@@ -32,9 +32,9 @@ public class Main {
 
             BlockRegistry.init();
 
-            World world = new World(atlas, new FlatWorldGenerator(8), new File(ResourceLoader.getJarDirectory() + "/saves/world.dat"), Options.renderDistance);
+//            World world = new World(atlas, new FlatWorldGenerator(8), new File(ResourceLoader.getJarDirectory() + "/saves/world.dat"), Options.renderDistance);
 
-//            World world = new World(atlas, new StressTester(), new File(ResourceLoader.getJarDirectory() + "/saves/world.dat"), Options.renderDistance);
+            World world = new World(atlas, new StressTester(), new File(ResourceLoader.getJarDirectory() + "/saves/world.dat"), Options.renderDistance);
             /// /////////////////////
 
             long last = System.nanoTime();

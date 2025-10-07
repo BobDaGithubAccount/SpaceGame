@@ -17,13 +17,11 @@ public class FlatWorldGenerator implements WorldGenerator {
                 for (int x=0; x<Chunk.SIZE; x++) {
                     int wy = cy * Chunk.SIZE + y;
                     if (wy < groundHeight) {
-                        c.setBlock(x,y,z, 2, false);
+                        c.setBlock(x,y,z, 2);
                     }
                 }
             }
         }
-
-        c.markDirty();
 
         return c;
     }

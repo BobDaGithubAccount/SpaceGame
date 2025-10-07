@@ -9,7 +9,7 @@ public class StressTester implements WorldGenerator {
     public Chunk generateChunk(int cx, int cy, int cz) {
         Chunk c = new Chunk(cx, cy, cz);
 
-        if(random.nextBoolean()) return c; // 50% chance to generate an empty chunk
+        if(random.nextBoolean()) return c;
 
         for (int z = 0; z < Chunk.SIZE; z++) {
             for (int y = 0; y < Chunk.SIZE; y++) {
@@ -20,12 +20,10 @@ public class StressTester implements WorldGenerator {
 
                     int[] blockTypes = {2, 2, 3, 4};
                     int blockType = blockTypes[random.nextInt(blockTypes.length)];
-                    c.setBlock(x, y, z, blockType, false);
+                    c.setBlock(x, y, z, blockType);
                 }
             }
         }
-
-        c.markDirty();
 
         return c;
     }
