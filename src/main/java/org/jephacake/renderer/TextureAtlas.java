@@ -52,9 +52,9 @@ public final class TextureAtlas implements AutoCloseable {
      * Build atlas CPU data from package resources. This does NOT create a GL texture.
      *
      * @param packagePath e.g. "org/jephacake/assets/textures"
-     * @param paddingPixels inset on each tile
      */
-    public static TextureAtlas buildFromPackage(String packagePath, int paddingPixels) throws IOException {
+    public static TextureAtlas buildFromPackage(String packagePath) throws IOException {
+        int paddingPixels = 0;
         System.out.println("Building TextureAtlas from package: " + packagePath);
         List<String> files = ResourceLoader.listResources(packagePath);
         List<String> pngs = new ArrayList<>();

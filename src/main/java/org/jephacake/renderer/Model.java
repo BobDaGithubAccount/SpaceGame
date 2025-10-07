@@ -4,15 +4,21 @@ import org.joml.Matrix4f;
 
 /**
  * Lightweight model wrapper around mesh and optional texture.
- * Not for chunks or voxels, but for entities, items and exotica.
+ * Does NOT own the texture by default.
  */
 public class Model implements AutoCloseable {
     private final Mesh mesh;
     private final TextureGL texture;
+    private final boolean ownsTexture; // new
 
     public Model(Mesh mesh, TextureGL texture) {
+        this(mesh, texture, false);
+    }
+
+    public Model(Mesh mesh, TextureGL texture, boolean ownsTexture) {
         this.mesh = mesh;
         this.texture = texture;
+        this.ownsTexture = ownsTexture;
     }
 
     public void render(ShaderProgram shader, Matrix4f modelMatrix) {
@@ -28,6 +34,7 @@ public class Model implements AutoCloseable {
     @Override
     public void close() {
         mesh.close();
-        if (texture != null) texture.close();
+        // only close texture if this Model actually owns it
+        if (ownsTexture && texture != null) texture.close();
     }
 }

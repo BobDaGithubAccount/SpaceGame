@@ -1,6 +1,7 @@
     //TODO:
     /*
      - Get the chunk loading and unloading working without crashes or freezes.
+     - Reflection based auto registration of blocks and items
      - Get networking down with the server and client for chunks, block updates, chunk updates, loading and unloading, player polling etc...
      - Ensure several "worlds" can exist on the server so we can get vehicles, planets and other voxel constructions rendered in parallel. This requires refactoring and generalisation
      - Get player collision and entity/world collisions working (planets dont fall through each other)

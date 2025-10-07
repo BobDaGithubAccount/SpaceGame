@@ -26,6 +26,4 @@ void main() {
 
 
     fragColor = vec4(finalColor, finalAlpha);
-//    fragColor = tex;
-//    fragColor = vec4(vUV, 0, 1);
 }
